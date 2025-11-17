@@ -1,0 +1,1093 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { useTheme } from "next-themes"
+import { 
+  ChevronDown,
+  Sun,
+  Moon
+} from "lucide-react"
+
+// Dynamically import Plotly to avoid SSR issues
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false })
+
+const ImportExportDashboard = () => {
+  const { theme, setTheme } = useTheme()
+  
+  // State for data and filters
+  const [data, setData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
+  const [products, setProducts] = useState([])
+  const [currencies, setCurrencies] = useState([])
+  const [selectedProduct, setSelectedProduct] = useState('All')
+  const [selectedCurrency, setSelectedCurrency] = useState('All')
+  const [customChartDescription, setCustomChartDescription] = useState('')
+  const [customChartConfig, setCustomChartConfig] = useState(null)
+
+  // Load and process data
+  useEffect(() => {
+    // Full import/export dataset
+    const csvData = `Date,Shipment_ID,Product,Quantity,Price_per_unit,Currency,Market_Impact_Score,Delay_in_days,Risk_Score,Profit,Cost,Anomaly
+2024-01-01,SHP1000,Machinery,271,59.09,EUR,0.8,3,0.79,474.84,2712.76,0
+2024-01-02,SHP1001,Chemicals,374,41.68,GBP,0.54,3,0.46,1416.59,1807.32,1
+2024-01-03,SHP1002,Food,489,95.42,GBP,0.66,1,0.73,4367.86,1450.25,0
+2024-01-04,SHP1003,Chemicals,381,73.9,INR,0.74,1,0.15,-997.34,1311.24,0
+2024-01-05,SHP1004,Chemicals,359,118.81,EUR,0.52,2,0.85,4408.3,1615.13,0
+2024-01-06,SHP1005,Textiles,56,20.16,USD,0.43,0,0.71,-77.16,3662.45,0
+2024-01-07,SHP1006,Food,364,195.01,EUR,0.88,0,0.91,4940.52,771.74,0
+2024-01-08,SHP1007,Food,320,197.31,INR,0.42,3,0.13,4729.08,3401.05,0
+2024-01-09,SHP1008,Food,433,141.14,INR,0.46,1,0.59,1968.05,1721.12,0
+2024-01-10,SHP1009,Chemicals,317,109.54,EUR,0.99,3,0.6,2076.32,2325.6,1
+2024-01-11,SHP1010,Machinery,153,65.36,EUR,0.0,2,0.35,1889.3,3280.7,0
+2024-01-12,SHP1011,Food,278,163.69,EUR,0.19,0,0.46,2812.66,3595.32,0
+2024-01-13,SHP1012,Chemicals,379,138.52,GBP,0.38,0,0.04,-455.67,1706.73,0
+2024-01-14,SHP1013,Textiles,133,36.71,USD,0.93,1,0.75,-804.29,2116.45,0
+2024-01-15,SHP1014,Machinery,115,182.63,EUR,0.07,1,0.55,-653.78,1950.81,0
+2024-01-16,SHP1015,Textiles,167,165.39,EUR,0.01,2,0.06,1666.19,546.38,0
+2024-01-17,SHP1016,Machinery,156,190.21,EUR,0.05,2,0.68,653.29,1535.8,0
+2024-01-18,SHP1017,Chemicals,154,146.52,INR,0.09,3,0.47,2732.24,2107.16,0
+2024-01-19,SHP1018,Electronics,129,124.62,INR,0.04,3,0.03,4954.65,1938.83,0
+2024-01-20,SHP1019,Machinery,328,86.56,GBP,0.48,0,0.97,1317.94,3026.75,0
+2024-01-21,SHP1020,Textiles,284,186.88,USD,0.58,6,0.95,2443.05,1846.81,0
+2024-01-22,SHP1021,Chemicals,101,173.88,GBP,0.27,1,0.51,1493.62,2212.82,0
+2024-01-23,SHP1022,Machinery,67,13.82,USD,0.4,4,0.09,4083.63,2003.63,0
+2024-01-24,SHP1023,Electronics,448,10.14,INR,0.09,0,0.75,4413.42,3092.19,0
+2024-01-25,SHP1024,Electronics,355,78.41,INR,0.34,1,0.49,4264.13,3520.4,0
+2024-01-26,SHP1025,Food,238,163.06,INR,0.52,6,0.3,4846.23,2361.61,0
+2024-01-27,SHP1026,Food,483,197.52,GBP,0.73,2,0.49,-834.88,3263.01,0
+2024-01-28,SHP1027,Textiles,126,34.33,EUR,0.0,2,0.52,4038.9,1538.75,0
+2024-01-29,SHP1028,Machinery,327,120.86,EUR,0.47,2,0.56,3510.63,2394.79,0
+2024-01-30,SHP1029,Machinery,288,79.27,INR,0.3,3,0.44,372.17,1708.3,0
+2024-01-31,SHP1030,Food,136,194.13,EUR,0.85,0,0.61,4737.92,1949.7,0
+2024-02-01,SHP1031,Machinery,402,169.21,EUR,0.72,1,0.92,-110.93,3063.45,0
+2024-02-02,SHP1032,Machinery,405,168.47,GBP,0.59,3,0.36,3077.3,3585.82,0
+2024-02-03,SHP1033,Electronics,138,96.4,USD,0.28,4,0.73,349.34,925.23,0
+2024-02-04,SHP1034,Food,67,85.89,INR,0.91,1,0.89,1588.28,2721.24,0
+2024-02-05,SHP1035,Chemicals,131,58.31,INR,0.05,1,0.46,3314.96,2537.5,0
+2024-02-06,SHP1036,Food,10,15.99,GBP,0.11,3,0.44,2379.95,914.45,0
+2024-02-07,SHP1037,Chemicals,248,173.62,GBP,0.39,4,0.6,1565.01,1241.63,0
+2024-02-08,SHP1038,Electronics,299,163.52,EUR,0.12,3,0.59,958.03,1588.51,1
+2024-02-09,SHP1039,Textiles,105,199.94,INR,0.96,1,0.81,4037.96,1084.26,0
+2024-02-10,SHP1040,Machinery,135,199.34,USD,0.8,1,0.48,-137.11,1353.05,0
+2024-02-11,SHP1041,Electronics,127,113.31,GBP,0.26,4,1.0,1580.62,1436.6,0
+2024-02-12,SHP1042,Machinery,57,154.95,USD,0.59,0,0.06,4422.55,1674.86,0
+2024-02-13,SHP1043,Textiles,98,189.23,USD,0.98,4,0.0,4075.1,3122.87,0
+2024-02-14,SHP1044,Textiles,497,170.68,INR,0.88,0,0.64,1405.65,2501.69,0
+2024-02-15,SHP1045,Electronics,246,53.23,INR,0.6,2,0.3,3578.65,3951.86,0
+2024-02-16,SHP1046,Textiles,382,92.86,GBP,0.9,2,0.24,3938.96,1951.58,0
+2024-02-17,SHP1047,Chemicals,394,30.19,INR,0.99,2,0.31,4333.32,3138.53,0
+2024-02-18,SHP1048,Textiles,281,191.04,INR,0.74,3,0.26,2267.03,3550.14,0
+2024-02-19,SHP1049,Machinery,198,123.2,INR,0.06,0,0.03,226.77,2876.42,0
+2024-02-20,SHP1050,Machinery,496,49.59,USD,0.4,4,0.97,531.85,1941.53,0
+2024-02-21,SHP1051,Machinery,201,135.98,GBP,0.84,1,0.22,774.17,3137.58,0
+2024-02-22,SHP1052,Machinery,456,125.54,EUR,0.23,3,0.73,2562.81,1212.83,0
+2024-02-23,SHP1053,Chemicals,78,74.84,USD,0.83,3,0.76,-803.14,1646.43,0
+2024-02-24,SHP1054,Food,287,27.14,INR,0.12,2,0.93,2816.25,2413.4,0
+2024-02-25,SHP1055,Electronics,358,135.96,USD,0.05,1,0.03,1186.13,2513.93,0
+2024-02-26,SHP1056,Machinery,256,106.46,INR,0.38,2,0.87,771.45,577.5,0
+2024-02-27,SHP1057,Textiles,460,155.6,INR,0.04,1,0.53,4276.98,3807.9,0
+2024-02-28,SHP1058,Machinery,85,106.43,USD,0.96,1,0.63,1760.01,2938.2,0
+2024-02-29,SHP1059,Textiles,163,171.18,GBP,0.83,1,0.64,-429.68,2234.96,0
+2024-03-01,SHP1060,Textiles,153,112.62,INR,0.8,2,0.82,3960.48,3765.95,0
+2024-03-02,SHP1061,Machinery,444,114.38,GBP,0.63,1,0.33,-714.15,2036.83,1
+2024-03-03,SHP1062,Chemicals,494,175.95,EUR,0.22,3,0.73,3360.5,3931.52,0
+2024-03-04,SHP1063,Textiles,95,83.68,INR,0.52,1,0.53,3643.44,2293.0,0
+2024-03-05,SHP1064,Textiles,194,31.13,GBP,0.6,3,0.79,1115.62,900.0,0
+2024-03-06,SHP1065,Machinery,294,10.61,GBP,0.53,3,0.99,3948.73,3176.8,0
+2024-03-07,SHP1066,Textiles,471,152.25,EUR,0.26,2,0.2,2093.96,2876.14,0
+2024-03-08,SHP1067,Textiles,229,125.96,GBP,0.52,2,0.99,1779.76,3205.45,0
+2024-03-09,SHP1068,Machinery,78,142.3,GBP,0.49,2,0.09,-727.58,3830.05,0
+2024-03-10,SHP1069,Machinery,56,46.53,EUR,1.0,2,0.0,740.18,3217.71,0
+2024-03-11,SHP1070,Electronics,103,31.59,INR,0.9,2,0.04,4586.06,2639.68,0
+2024-03-12,SHP1071,Chemicals,247,7.84,GBP,0.46,1,0.34,1350.94,3500.58,0
+2024-03-13,SHP1072,Chemicals,455,73.36,GBP,0.62,3,0.63,2280.2,2856.36,0
+2024-03-14,SHP1073,Textiles,462,120.03,GBP,0.75,2,0.07,2192.13,1928.42,0
+2024-03-15,SHP1074,Chemicals,213,81.49,USD,0.03,3,0.01,2542.59,3599.67,0
+2024-03-16,SHP1075,Textiles,409,90.31,EUR,0.89,3,0.94,-632.01,1276.65,0
+2024-03-17,SHP1076,Electronics,227,181.31,USD,0.86,3,0.82,1173.06,3001.24,0
+2024-03-18,SHP1077,Machinery,483,72.91,EUR,0.46,0,0.81,3338.77,3585.47,0
+2024-03-19,SHP1078,Machinery,441,105.23,INR,0.39,1,0.88,203.36,3059.61,0
+2024-03-20,SHP1079,Machinery,350,157.81,INR,0.27,3,0.7,221.47,2940.46,0
+2024-03-21,SHP1080,Chemicals,48,82.33,GBP,0.48,0,0.1,-939.46,3134.23,0
+2024-03-22,SHP1081,Electronics,109,126.31,EUR,0.04,3,0.4,1624.89,2127.69,0
+2024-03-23,SHP1082,Chemicals,298,173.16,INR,0.85,1,0.72,4296.41,3559.6,0
+2024-03-24,SHP1083,Chemicals,263,190.16,EUR,0.04,0,0.28,-688.59,1212.03,0
+2024-03-25,SHP1084,Electronics,231,33.68,INR,0.33,0,0.69,146.71,945.85,0
+2024-03-26,SHP1085,Electronics,366,185.68,USD,0.93,1,0.02,860.51,1499.28,0
+2024-03-27,SHP1086,Electronics,32,100.96,INR,0.74,1,0.31,3390.35,2360.52,0
+2024-03-28,SHP1087,Electronics,259,55.36,USD,0.28,1,0.55,2843.81,2286.97,0
+2024-03-29,SHP1088,Machinery,19,94.53,INR,0.25,4,0.63,1495.66,3372.1,0
+2024-03-30,SHP1089,Food,255,196.11,GBP,0.01,3,0.58,3554.41,1915.99,0
+2024-03-31,SHP1090,Food,334,101.06,USD,0.7,2,0.7,2657.79,2195.21,0
+2024-04-01,SHP1091,Electronics,109,69.11,INR,0.05,4,0.01,4376.24,546.79,0
+2024-04-02,SHP1092,Food,299,128.51,GBP,0.53,2,0.1,3908.16,1934.09,0
+2024-04-03,SHP1093,Food,189,51.83,USD,0.96,0,0.87,516.88,2767.21,0
+2024-04-04,SHP1094,Electronics,232,19.79,GBP,0.11,1,0.68,628.63,554.28,0
+2024-04-05,SHP1095,Food,403,30.13,EUR,0.89,5,0.11,-247.86,1483.09,0
+2024-04-06,SHP1096,Chemicals,259,29.97,EUR,0.99,1,0.84,1021.79,1227.85,0
+2024-04-07,SHP1097,Textiles,156,34.62,USD,0.06,5,0.24,4997.26,646.95,0
+2024-04-08,SHP1098,Textiles,451,32.07,INR,0.88,0,0.48,1434.51,2177.41,0
+2024-04-09,SHP1099,Electronics,105,129.97,USD,0.52,2,0.15,322.93,1136.03,0
+2024-04-10,SHP1100,Machinery,266,40.47,GBP,0.91,0,0.71,3574.9,3100.79,0
+2024-04-11,SHP1101,Electronics,334,72.41,INR,0.57,1,0.67,2254.83,3467.75,0
+2024-04-12,SHP1102,Machinery,13,179.87,EUR,0.66,4,0.21,-102.39,2409.55,0
+2024-04-13,SHP1103,Textiles,25,97.42,INR,0.54,0,0.86,1284.14,3935.98,0
+2024-04-14,SHP1104,Electronics,289,135.17,EUR,0.86,0,0.4,1486.82,2076.68,0
+2024-04-15,SHP1105,Chemicals,345,38.6,INR,0.73,2,0.29,3522.98,2296.79,0
+2024-04-16,SHP1106,Food,256,42.5,INR,0.52,1,0.15,-875.97,3962.26,0
+2024-04-17,SHP1107,Machinery,267,12.97,INR,0.87,1,0.27,614.12,1310.42,0
+2024-04-18,SHP1108,Food,485,37.94,GBP,0.25,3,0.02,2105.58,3798.91,1
+2024-04-19,SHP1109,Food,393,59.33,GBP,0.16,1,0.58,613.08,649.93,0
+2024-04-20,SHP1110,Electronics,169,39.52,USD,0.16,2,0.84,2770.6,2062.35,0
+2024-04-21,SHP1111,Food,484,22.3,USD,0.33,3,0.55,1891.2,745.01,0
+2024-04-22,SHP1112,Chemicals,349,28.52,EUR,0.24,1,0.22,1170.26,3052.32,0
+2024-04-23,SHP1113,Food,161,94.85,GBP,0.93,1,0.03,4695.25,2629.43,0
+2024-04-24,SHP1114,Electronics,405,45.24,EUR,0.11,4,0.21,2792.96,2973.22,0
+2024-04-25,SHP1115,Chemicals,187,76.03,USD,0.7,2,0.42,-220.35,1810.68,0
+2024-04-26,SHP1116,Textiles,172,103.17,EUR,0.19,1,0.76,2360.55,1793.19,0
+2024-04-27,SHP1117,Food,389,139.63,USD,0.88,2,0.19,3684.39,658.62,0
+2024-04-28,SHP1118,Electronics,42,12.67,GBP,0.96,3,0.72,3250.94,1724.81,0
+2024-04-29,SHP1119,Textiles,426,160.89,INR,0.47,1,0.87,32.54,3752.51,0
+2024-04-30,SHP1120,Textiles,454,127.44,GBP,0.88,3,0.45,4834.52,1827.29,0
+2024-05-01,SHP1121,Machinery,188,20.94,EUR,0.01,0,0.82,1692.88,3409.79,0
+2024-05-02,SHP1122,Chemicals,436,175.35,EUR,0.82,0,0.55,-45.85,3448.14,0
+2024-05-03,SHP1123,Food,110,184.57,GBP,0.23,1,0.64,81.17,1806.34,0
+2024-05-04,SHP1124,Electronics,277,16.91,GBP,0.91,2,0.53,-410.59,2711.96,0
+2024-05-05,SHP1125,Machinery,332,58.99,USD,0.0,1,0.46,3821.11,833.8,0
+2024-05-06,SHP1126,Chemicals,74,162.21,EUR,0.56,3,0.23,-267.82,862.88,0
+2024-05-07,SHP1127,Machinery,426,150.91,EUR,0.76,4,0.3,-249.25,670.3,0
+2024-05-08,SHP1128,Chemicals,177,40.98,GBP,0.26,0,0.29,4102.83,2533.55,0
+2024-05-09,SHP1129,Chemicals,339,45.82,INR,0.19,3,0.56,1067.62,1991.25,0
+2024-05-10,SHP1130,Food,52,77.24,EUR,0.08,2,0.12,-814.85,2418.11,0
+2024-05-11,SHP1131,Chemicals,53,99.48,INR,0.33,3,0.92,-688.63,2323.76,0
+2024-05-12,SHP1132,Machinery,294,125.56,GBP,0.56,1,0.72,-146.98,1725.71,0
+2024-05-13,SHP1133,Chemicals,406,76.94,GBP,0.12,3,0.4,280.36,2871.16,0
+2024-05-14,SHP1134,Food,21,95.19,USD,0.38,2,0.16,2990.88,3154.76,0
+2024-05-15,SHP1135,Food,104,150.76,EUR,0.01,0,0.88,-56.04,551.2,0
+2024-05-16,SHP1136,Machinery,311,12.15,INR,0.82,3,0.82,-286.75,1225.35,0
+2024-05-17,SHP1137,Textiles,395,54.23,USD,0.13,0,0.72,3588.31,2996.33,0
+2024-05-18,SHP1138,Textiles,262,144.1,EUR,0.28,2,0.27,3026.33,1853.17,0
+2024-05-19,SHP1139,Chemicals,251,179.57,USD,0.02,5,0.4,1611.95,2818.69,0
+2024-05-20,SHP1140,Electronics,44,104.78,GBP,0.43,2,0.1,2295.86,1714.37,0
+2024-05-21,SHP1141,Chemicals,224,108.76,EUR,0.84,1,0.19,871.9,1867.64,0
+2024-05-22,SHP1142,Machinery,346,25.9,USD,0.39,3,0.78,1895.0,1055.38,0
+2024-05-23,SHP1143,Machinery,99,92.25,USD,0.18,2,0.72,2040.04,1403.81,0
+2024-05-24,SHP1144,Machinery,273,108.86,INR,0.75,1,0.59,1323.42,2618.94,0
+2024-05-25,SHP1145,Machinery,102,52.28,USD,0.79,0,0.9,4439.43,2016.07,0
+2024-05-26,SHP1146,Machinery,419,57.5,EUR,0.17,3,0.58,-903.63,3210.06,0
+2024-05-27,SHP1147,Food,467,78.57,EUR,0.77,0,0.47,3693.03,3484.05,0
+2024-05-28,SHP1148,Textiles,99,8.91,INR,0.95,1,0.34,-253.7,2395.76,0
+2024-05-29,SHP1149,Machinery,427,67.81,EUR,0.17,4,0.94,3785.28,3153.94,0
+2024-05-30,SHP1150,Electronics,124,46.23,GBP,0.77,0,0.08,2695.47,1574.17,0
+2024-05-31,SHP1151,Electronics,114,68.86,EUR,0.71,0,0.93,4059.67,1952.4,0
+2024-06-01,SHP1152,Electronics,400,28.35,EUR,0.47,1,0.83,-414.91,2994.72,0
+2024-06-02,SHP1153,Electronics,205,178.65,USD,0.06,2,0.13,2353.88,1851.74,0
+2024-06-03,SHP1154,Food,323,120.75,USD,0.07,1,0.56,2006.53,2559.77,0
+2024-06-04,SHP1155,Electronics,123,137.42,EUR,0.85,3,0.87,3237.16,1148.8,0
+2024-06-05,SHP1156,Machinery,84,158.89,INR,0.99,4,0.57,2205.74,2599.2,0
+2024-06-06,SHP1157,Chemicals,422,102.2,USD,0.68,2,0.91,2244.41,3515.3,0
+2024-06-07,SHP1158,Electronics,385,21.95,INR,0.45,3,0.94,1577.58,3540.24,0
+2024-06-08,SHP1159,Food,429,109.74,EUR,0.65,0,0.42,853.01,3035.21,0
+2024-06-09,SHP1160,Food,226,119.43,EUR,0.59,2,0.38,1893.59,3110.14,0
+2024-06-10,SHP1161,Electronics,286,150.36,GBP,0.38,2,0.94,-289.05,2452.75,0
+2024-06-11,SHP1162,Chemicals,258,89.17,USD,0.07,1,0.68,4769.08,2546.34,1
+2024-06-12,SHP1163,Electronics,173,29.88,EUR,0.82,2,0.12,3286.46,967.78,0
+2024-06-13,SHP1164,Food,403,60.34,GBP,0.37,2,0.04,4714.8,2053.51,1
+2024-06-14,SHP1165,Textiles,366,75.8,USD,0.82,2,0.56,360.36,2077.72,0
+2024-06-15,SHP1166,Machinery,466,130.95,EUR,0.25,1,0.93,4276.05,3854.74,0
+2024-06-16,SHP1167,Food,417,116.3,EUR,0.0,3,0.84,3852.74,2008.8,0
+2024-06-17,SHP1168,Electronics,201,74.44,USD,0.16,4,0.68,3062.91,2422.7,0
+2024-06-18,SHP1169,Machinery,236,197.37,USD,0.47,2,0.14,2750.18,2366.38,0
+2024-06-19,SHP1170,Electronics,186,123.13,USD,0.94,3,0.25,899.3,2728.67,0
+2024-06-20,SHP1171,Electronics,108,51.26,EUR,0.1,3,0.88,3898.46,3118.81,0
+2024-06-21,SHP1172,Textiles,45,24.85,EUR,0.85,3,0.18,2009.09,1287.65,0
+2024-06-22,SHP1173,Machinery,475,34.81,GBP,0.53,5,0.28,-574.65,2350.54,0
+2024-06-23,SHP1174,Machinery,496,52.96,INR,0.83,1,0.13,877.18,3390.71,0
+2024-06-24,SHP1175,Textiles,105,36.33,USD,0.3,3,0.68,4611.78,2120.9,0
+2024-06-25,SHP1176,Food,161,41.38,EUR,0.84,1,0.94,4104.08,1474.6,0
+2024-06-26,SHP1177,Electronics,160,60.59,EUR,0.77,0,0.27,4891.43,2791.48,0
+2024-06-27,SHP1178,Chemicals,199,38.81,USD,0.23,1,0.48,2767.96,3383.19,0
+2024-06-28,SHP1179,Electronics,233,179.87,INR,0.13,1,0.63,485.06,720.99,0
+2024-06-29,SHP1180,Electronics,46,20.65,USD,0.87,3,1.0,-23.11,3218.77,0
+2024-06-30,SHP1181,Food,277,107.28,INR,0.96,1,0.1,121.49,3375.77,0
+2024-07-01,SHP1182,Electronics,378,85.03,EUR,0.03,2,0.5,-881.23,2115.33,0
+2024-07-02,SHP1183,Textiles,192,196.56,INR,0.73,3,0.39,1344.09,3941.57,0
+2024-07-03,SHP1184,Textiles,22,26.85,GBP,0.91,2,0.87,148.57,3253.48,0
+2024-07-04,SHP1185,Machinery,288,82.58,EUR,0.86,3,0.48,1469.93,3207.82,0
+2024-07-05,SHP1186,Chemicals,226,194.05,GBP,0.96,3,0.11,4609.97,3117.44,0
+2024-07-06,SHP1187,Electronics,364,173.77,USD,0.76,2,0.63,1583.24,1027.13,0
+2024-07-07,SHP1188,Electronics,370,164.33,USD,0.44,0,0.77,4267.91,1260.31,0
+2024-07-08,SHP1189,Food,295,55.29,USD,0.31,3,0.0,2633.03,2123.97,0
+2024-07-09,SHP1190,Textiles,282,38.32,INR,0.32,1,0.86,482.79,1424.02,0
+2024-07-10,SHP1191,Chemicals,378,135.39,EUR,0.72,1,0.19,1135.13,1953.34,0
+2024-07-11,SHP1192,Machinery,71,186.23,USD,0.75,5,0.55,-496.48,3609.62,0
+2024-07-12,SHP1193,Textiles,93,113.57,USD,0.2,2,0.42,1000.78,3385.14,0
+2024-07-13,SHP1194,Machinery,377,116.46,EUR,0.87,5,0.72,3065.25,2705.14,0
+2024-07-14,SHP1195,Food,226,59.6,USD,0.71,0,0.37,-567.33,3503.42,0
+2024-07-15,SHP1196,Food,351,155.05,GBP,0.56,2,0.87,232.41,3243.2,0
+2024-07-16,SHP1197,Electronics,406,41.47,EUR,0.47,2,0.73,1288.65,2001.45,0
+2024-07-17,SHP1198,Chemicals,196,68.12,EUR,0.54,3,0.65,4892.3,1203.73,0
+2024-07-18,SHP1199,Machinery,28,87.96,EUR,0.16,3,0.8,3709.17,2299.7,0
+2024-07-19,SHP1200,Textiles,186,103.98,GBP,0.2,0,0.75,3400.92,3076.8,0
+2024-07-20,SHP1201,Food,109,52.27,EUR,0.09,1,0.04,-302.85,2027.47,0
+2024-07-21,SHP1202,Electronics,405,27.39,GBP,0.15,3,0.39,3685.98,2833.7,0
+2024-07-22,SHP1203,Electronics,454,124.07,EUR,0.45,1,0.93,3711.61,830.15,0
+2024-07-23,SHP1204,Machinery,242,61.28,INR,0.53,0,0.13,2606.62,3118.02,0
+2024-07-24,SHP1205,Food,412,118.34,USD,0.02,1,0.74,4942.17,3344.5,0
+2024-07-25,SHP1206,Chemicals,85,35.1,INR,0.8,3,0.97,951.52,2973.93,0
+2024-07-26,SHP1207,Food,274,98.82,USD,0.29,2,0.05,4647.63,3885.42,0
+2024-07-27,SHP1208,Machinery,464,108.85,GBP,0.91,1,0.68,4488.39,3393.28,0
+2024-07-28,SHP1209,Machinery,293,15.11,INR,0.97,2,0.47,-931.12,3660.83,0
+2024-07-29,SHP1210,Food,215,70.64,EUR,0.19,2,0.58,1700.7,3767.5,0
+2024-07-30,SHP1211,Machinery,232,31.21,USD,0.46,2,0.09,4862.63,3304.72,0
+2024-07-31,SHP1212,Food,393,17.36,USD,0.0,0,0.04,-381.27,2859.91,0
+2024-08-01,SHP1213,Textiles,61,198.04,INR,0.6,5,0.67,2286.71,520.02,0
+2024-08-02,SHP1214,Food,348,67.86,GBP,0.61,2,0.82,4873.75,2130.39,0
+2024-08-03,SHP1215,Food,376,162.93,INR,0.25,1,0.78,2332.97,2499.07,0
+2024-08-04,SHP1216,Machinery,153,54.65,GBP,0.56,3,0.54,138.89,1564.11,0
+2024-08-05,SHP1217,Machinery,382,137.89,GBP,0.23,0,0.1,2493.1,1613.37,0
+2024-08-06,SHP1218,Electronics,78,153.24,USD,0.16,2,0.69,226.64,3864.06,0
+2024-08-07,SHP1219,Electronics,108,121.15,INR,0.65,3,0.24,2118.23,3620.99,0
+2024-08-08,SHP1220,Textiles,405,96.96,INR,0.33,3,0.91,-555.75,3472.13,0
+2024-08-09,SHP1221,Electronics,34,85.31,GBP,0.59,2,0.84,2632.9,1921.04,0
+2024-08-10,SHP1222,Food,445,73.03,INR,0.43,1,0.71,2100.74,547.94,0
+2024-08-11,SHP1223,Machinery,388,186.26,EUR,0.98,2,0.95,3440.97,780.78,0
+2024-08-12,SHP1224,Electronics,478,166.97,EUR,0.15,3,0.03,2784.2,1592.69,0
+2024-08-13,SHP1225,Electronics,493,193.18,INR,0.46,1,0.74,2297.64,555.1,0
+2024-08-14,SHP1226,Textiles,62,29.24,INR,0.68,4,0.33,3138.67,560.02,0
+2024-08-15,SHP1227,Textiles,160,147.52,GBP,0.4,4,0.91,-136.35,3708.11,0
+2024-08-16,SHP1228,Food,153,187.98,EUR,0.97,0,0.27,2572.16,2971.55,0
+2024-08-17,SHP1229,Machinery,66,40.34,EUR,0.72,1,0.72,32.66,1581.35,0
+2024-08-18,SHP1230,Textiles,48,17.97,USD,0.66,3,0.88,4553.13,964.26,0
+2024-08-19,SHP1231,Electronics,118,149.52,GBP,0.76,2,0.04,-590.0,2290.73,0
+2024-08-20,SHP1232,Machinery,190,117.02,USD,0.95,1,0.4,1582.25,518.71,0
+2024-08-21,SHP1233,Machinery,51,169.16,EUR,0.91,2,0.76,3174.78,3784.45,0
+2024-08-22,SHP1234,Electronics,195,32.26,GBP,0.72,2,0.45,1748.13,1951.85,0
+2024-08-23,SHP1235,Textiles,432,160.08,INR,0.75,1,0.27,-447.43,1908.17,0
+2024-08-24,SHP1236,Electronics,407,44.32,GBP,0.15,1,0.22,2320.27,1867.08,0
+2024-08-25,SHP1237,Machinery,232,36.91,INR,0.1,2,0.13,2849.79,742.65,0
+2024-08-26,SHP1238,Chemicals,131,37.03,INR,0.57,2,0.86,3222.75,2734.13,0
+2024-08-27,SHP1239,Chemicals,142,163.84,GBP,0.02,3,0.58,1239.56,3065.51,0
+2024-08-28,SHP1240,Food,172,134.71,INR,0.48,1,0.08,2381.96,2866.44,0
+2024-08-29,SHP1241,Electronics,224,107.0,USD,0.21,2,0.38,1704.12,984.52,0
+2024-08-30,SHP1242,Electronics,230,74.97,EUR,0.35,2,0.37,3032.34,2525.94,0
+2024-08-31,SHP1243,Food,244,176.05,INR,0.78,3,0.18,2501.34,2493.2,0
+2024-09-01,SHP1244,Food,340,81.53,USD,0.94,3,0.44,2154.54,3539.44,0
+2024-09-02,SHP1245,Food,155,164.24,INR,0.07,3,0.33,497.15,1826.95,0
+2024-09-03,SHP1246,Machinery,248,90.63,EUR,0.53,0,0.34,-987.89,1800.2,0
+2024-09-04,SHP1247,Electronics,85,78.5,USD,0.88,5,0.74,44.49,2664.84,0
+2024-09-05,SHP1248,Machinery,18,95.22,EUR,0.08,1,0.22,-297.6,2715.75,0
+2024-09-06,SHP1249,Food,83,63.77,EUR,0.82,0,0.64,1694.51,2142.5,0
+2024-09-07,SHP1250,Electronics,451,150.78,USD,0.36,2,0.57,2673.55,2050.71,0
+2024-09-08,SHP1251,Machinery,410,103.03,USD,0.32,2,0.57,278.51,2229.52,0
+2024-09-09,SHP1252,Machinery,262,50.28,USD,0.98,1,0.66,4634.34,3513.66,0
+2024-09-10,SHP1253,Food,239,180.42,GBP,0.2,5,0.55,-959.91,2114.08,0
+2024-09-11,SHP1254,Electronics,16,79.86,USD,0.69,3,0.88,3633.81,3789.76,1
+2024-09-12,SHP1255,Food,183,110.99,USD,0.82,0,0.68,2751.23,2264.01,0
+2024-09-13,SHP1256,Electronics,150,181.76,USD,0.04,0,0.55,1241.33,3822.2,0
+2024-09-14,SHP1257,Chemicals,177,126.73,USD,0.67,4,0.83,-697.07,3414.91,0
+2024-09-15,SHP1258,Textiles,179,27.8,INR,0.95,3,0.61,2764.92,1768.51,0
+2024-09-16,SHP1259,Textiles,402,188.27,GBP,0.12,3,0.29,1313.68,3522.74,0
+2024-09-17,SHP1260,Textiles,443,127.4,EUR,0.9,1,0.21,4617.6,885.22,0
+2024-09-18,SHP1261,Food,292,70.31,USD,0.59,1,0.15,2251.94,3737.67,0
+2024-09-19,SHP1262,Chemicals,131,32.16,INR,0.62,1,0.9,4637.91,2710.75,0
+2024-09-20,SHP1263,Electronics,203,159.83,INR,0.61,2,0.71,322.9,690.37,0
+2024-09-21,SHP1264,Machinery,14,125.91,INR,0.3,0,0.94,3354.36,2754.9,0
+2024-09-22,SHP1265,Electronics,38,109.02,EUR,0.94,2,0.6,2703.49,3909.87,0
+2024-09-23,SHP1266,Machinery,174,179.31,USD,0.95,1,0.47,3436.45,744.3,0
+2024-09-24,SHP1267,Electronics,431,158.78,GBP,0.63,4,0.06,288.01,2441.41,0
+2024-09-25,SHP1268,Chemicals,348,34.58,GBP,0.78,1,0.67,2989.97,3117.28,0
+2024-09-26,SHP1269,Machinery,145,65.79,INR,0.61,3,0.58,1988.24,3335.91,0
+2024-09-27,SHP1270,Food,374,53.46,EUR,0.48,1,0.99,3456.95,1948.4,0
+2024-09-28,SHP1271,Electronics,330,150.07,EUR,0.66,1,0.24,962.27,1214.58,0
+2024-09-29,SHP1272,Electronics,351,11.54,EUR,0.55,1,0.53,4340.34,648.2,0
+2024-09-30,SHP1273,Machinery,154,116.13,GBP,0.6,3,0.65,-494.19,2529.04,0
+2024-10-01,SHP1274,Food,336,153.68,INR,0.78,1,0.64,3843.14,2085.19,0
+2024-10-02,SHP1275,Food,226,175.97,USD,0.48,1,0.56,4167.92,3820.61,0
+2024-10-03,SHP1276,Chemicals,310,71.71,GBP,0.04,7,0.78,3903.51,712.12,0
+2024-10-04,SHP1277,Food,141,165.15,INR,0.16,3,0.2,2076.36,2898.88,0
+2024-10-05,SHP1278,Food,301,26.57,INR,0.44,1,0.73,1630.31,587.38,0
+2024-10-06,SHP1279,Food,79,170.06,USD,0.72,0,0.62,4977.57,1100.02,0
+2024-10-07,SHP1280,Textiles,261,29.86,USD,0.59,1,0.9,375.03,2087.53,0
+2024-10-08,SHP1281,Chemicals,424,82.47,USD,0.65,2,0.85,2281.26,2092.05,0
+2024-10-09,SHP1282,Electronics,284,160.47,EUR,0.48,0,0.32,3024.05,2899.95,0
+2024-10-10,SHP1283,Machinery,454,34.23,USD,0.62,2,0.28,3205.21,3685.75,0
+2024-10-11,SHP1284,Electronics,373,49.7,INR,0.33,0,0.98,224.15,2736.61,0
+2024-10-12,SHP1285,Chemicals,191,145.84,USD,0.47,3,0.53,2923.96,3837.37,0
+2024-10-13,SHP1286,Machinery,176,145.41,INR,0.74,4,0.91,3910.22,3585.65,0
+2024-10-14,SHP1287,Chemicals,100,130.02,GBP,0.87,1,0.16,-699.89,2545.75,0
+2024-10-15,SHP1288,Food,211,140.32,EUR,0.43,3,0.64,4469.13,3418.27,0
+2024-10-16,SHP1289,Machinery,355,110.83,GBP,0.04,1,0.81,-822.98,2749.02,0
+2024-10-17,SHP1290,Food,28,54.1,GBP,0.16,2,0.95,1135.83,774.95,0
+2024-10-18,SHP1291,Electronics,48,72.41,INR,0.02,1,0.34,-905.12,3091.98,0
+2024-10-19,SHP1292,Electronics,135,40.41,GBP,0.65,1,0.72,-537.13,832.18,0
+2024-10-20,SHP1293,Machinery,460,182.15,INR,0.33,1,0.54,4467.01,2579.29,0
+2024-10-21,SHP1294,Machinery,182,118.76,USD,0.54,2,0.06,1129.16,2959.24,0
+2024-10-22,SHP1295,Chemicals,150,83.17,USD,0.49,1,0.69,1548.63,732.85,0
+2024-10-23,SHP1296,Chemicals,251,95.09,INR,0.08,2,0.69,292.07,1307.78,0
+2024-10-24,SHP1297,Food,229,189.72,USD,0.4,3,0.93,2582.57,3704.85,0
+2024-10-25,SHP1298,Machinery,135,34.9,EUR,0.22,3,0.5,2568.82,2657.1,0
+2024-10-26,SHP1299,Electronics,67,119.31,GBP,0.42,1,0.23,1233.2,1362.0,0
+2024-10-27,SHP1300,Chemicals,157,103.65,EUR,0.2,2,0.04,998.21,2917.38,0
+2024-10-28,SHP1301,Chemicals,485,124.23,GBP,0.84,1,0.42,4309.79,2588.72,0
+2024-10-29,SHP1302,Electronics,465,8.53,USD,0.17,0,0.3,1299.71,2255.51,0
+2024-10-30,SHP1303,Chemicals,326,175.06,EUR,0.96,2,0.76,1961.01,3916.65,0
+2024-10-31,SHP1304,Food,392,186.76,USD,0.42,2,0.35,699.83,2892.09,0
+2024-11-01,SHP1305,Machinery,370,115.2,GBP,0.85,2,0.95,3720.62,1814.04,1
+2024-11-02,SHP1306,Electronics,432,140.85,INR,0.63,3,0.96,1384.69,3300.26,0
+2024-11-03,SHP1307,Machinery,10,184.89,INR,0.74,0,0.62,2081.67,3596.04,0
+2024-11-04,SHP1308,Chemicals,396,142.91,EUR,0.77,3,0.93,520.14,938.27,0
+2024-11-05,SHP1309,Chemicals,470,34.75,USD,0.5,1,0.76,4925.96,1201.94,0
+2024-11-06,SHP1310,Electronics,357,117.38,USD,0.54,1,0.55,748.97,1256.79,0
+2024-11-07,SHP1311,Food,199,123.31,EUR,0.51,2,0.18,3624.46,2919.24,0
+2024-11-08,SHP1312,Textiles,200,87.71,INR,0.59,4,0.46,1564.97,2610.64,0
+2024-11-09,SHP1313,Electronics,378,148.61,GBP,0.03,1,0.56,237.3,2666.47,0
+2024-11-10,SHP1314,Textiles,418,187.2,EUR,0.4,2,0.86,3798.31,3792.71,0
+2024-11-11,SHP1315,Textiles,321,185.49,GBP,0.61,4,0.48,1001.64,3215.69,0
+2024-11-12,SHP1316,Food,426,92.91,INR,0.6,4,0.9,4191.16,947.78,0
+2024-11-13,SHP1317,Textiles,431,27.08,USD,0.79,1,0.67,4491.54,1716.27,0
+2024-11-14,SHP1318,Textiles,126,197.04,INR,0.66,2,0.14,4158.94,2023.88,0
+2024-11-15,SHP1319,Food,143,168.59,EUR,0.99,3,0.99,-789.95,1885.87,0
+2024-11-16,SHP1320,Textiles,67,29.31,USD,0.28,1,0.53,3724.24,2842.58,0
+2024-11-17,SHP1321,Textiles,53,184.56,EUR,0.36,3,0.39,1468.04,3621.63,0
+2024-11-18,SHP1322,Textiles,182,174.63,EUR,0.38,2,0.66,4242.34,1571.18,1
+2024-11-19,SHP1323,Electronics,169,106.17,INR,0.47,4,0.11,2827.73,2431.57,0
+2024-11-20,SHP1324,Electronics,182,120.3,EUR,0.84,1,0.64,4001.86,3262.93,0
+2024-11-21,SHP1325,Electronics,326,82.81,INR,0.24,1,0.5,1996.59,1956.76,0
+2024-11-22,SHP1326,Food,312,15.68,USD,0.78,6,0.41,2210.15,1088.41,0
+2024-11-23,SHP1327,Chemicals,158,70.36,INR,0.41,2,0.95,-133.67,2162.33,0
+2024-11-24,SHP1328,Textiles,89,161.56,USD,0.6,3,0.52,3703.92,693.28,0
+2024-11-25,SHP1329,Textiles,383,5.9,INR,0.63,2,0.22,1516.34,3798.34,0
+2024-11-26,SHP1330,Food,222,70.03,GBP,0.37,2,0.46,2000.48,761.87,0
+2024-11-27,SHP1331,Textiles,212,82.64,GBP,0.51,0,0.92,3710.59,2034.6,0
+2024-11-28,SHP1332,Electronics,261,109.79,EUR,0.41,3,0.18,2593.07,2354.58,0
+2024-11-29,SHP1333,Chemicals,238,184.37,INR,0.07,2,0.21,206.59,3948.56,0
+2024-11-30,SHP1334,Machinery,173,72.54,INR,0.44,1,0.01,2541.4,1081.08,0
+2024-12-01,SHP1335,Textiles,236,72.66,USD,0.1,1,0.01,1445.8,900.51,0
+2024-12-02,SHP1336,Electronics,156,148.81,EUR,0.41,1,0.83,1817.15,530.47,0
+2024-12-03,SHP1337,Machinery,29,93.18,INR,0.59,2,0.73,-830.13,1044.5,0
+2024-12-04,SHP1338,Chemicals,450,48.8,EUR,0.58,1,0.36,260.18,1225.46,0
+2024-12-05,SHP1339,Machinery,411,93.23,GBP,0.66,0,0.7,686.23,2707.03,0
+2024-12-06,SHP1340,Electronics,56,32.47,INR,0.1,3,0.4,3277.76,1268.97,0
+2024-12-07,SHP1341,Machinery,242,39.4,INR,0.65,1,0.95,-931.05,571.82,0
+2024-12-08,SHP1342,Food,314,102.18,EUR,0.31,3,0.97,1452.66,3393.16,0
+2024-12-09,SHP1343,Machinery,23,86.69,INR,0.4,4,0.39,4544.16,1779.58,0
+2024-12-10,SHP1344,Textiles,152,183.39,EUR,0.86,0,0.85,-328.72,1737.94,0
+2024-12-11,SHP1345,Textiles,424,75.67,INR,0.01,2,0.77,2098.55,1558.68,0
+2024-12-12,SHP1346,Food,10,118.21,USD,0.59,2,0.31,3719.13,3913.81,0
+2024-12-13,SHP1347,Electronics,382,128.29,EUR,0.6,0,0.23,4655.19,1095.4,0
+2024-12-14,SHP1348,Textiles,63,7.55,INR,0.4,2,0.46,3480.66,3643.83,0
+2024-12-15,SHP1349,Chemicals,383,134.39,GBP,0.24,1,0.78,3323.39,3218.81,0
+2024-12-16,SHP1350,Textiles,268,39.72,INR,0.23,1,0.96,3958.93,767.68,0
+2024-12-17,SHP1351,Textiles,153,192.41,GBP,0.88,0,0.76,1677.21,3953.55,0
+2024-12-18,SHP1352,Electronics,480,33.99,GBP,0.44,2,0.86,3835.07,1449.78,0
+2024-12-19,SHP1353,Machinery,450,85.85,USD,0.33,3,0.6,-952.21,845.04,0
+2024-12-20,SHP1354,Textiles,468,21.64,EUR,0.45,0,0.84,4547.37,3402.6,0
+2024-12-21,SHP1355,Food,21,199.39,INR,0.67,1,0.78,1659.84,2973.36,0
+2024-12-22,SHP1356,Machinery,339,102.93,USD,0.15,0,0.38,2320.28,2660.27,0
+2024-12-23,SHP1357,Chemicals,233,121.1,INR,0.45,5,0.55,529.29,1045.93,0
+2024-12-24,SHP1358,Electronics,281,18.08,GBP,0.59,2,0.8,3455.18,2174.74,0
+2024-12-25,SHP1359,Chemicals,465,151.24,EUR,0.95,2,0.05,-540.19,3231.95,0
+2024-12-26,SHP1360,Machinery,367,45.93,INR,0.25,2,0.81,4235.81,1562.68,0
+2024-12-27,SHP1361,Machinery,469,180.12,INR,0.36,2,0.18,3968.7,1590.91,0
+2024-12-28,SHP1362,Machinery,417,45.0,GBP,0.38,2,0.51,296.36,510.99,0
+2024-12-29,SHP1363,Chemicals,165,42.18,INR,0.61,2,0.81,3855.95,1109.85,0
+2024-12-30,SHP1364,Machinery,382,12.13,INR,0.36,2,0.25,3718.15,3563.92,0`
+
+    // Parse CSV data
+    const rows = csvData.split('\n')
+    const headers = rows[0].split(',')
+    const parsedData = rows.slice(1).map(row => {
+      const values = row.split(',')
+      return headers.reduce((obj, header, index) => {
+        obj[header] = values[index]
+        return obj
+      }, {})
+    })
+
+    setData(parsedData)
+    setFilteredData(parsedData)
+
+    // Extract unique products and currencies
+    const uniqueProducts = [...new Set(parsedData.map(item => item.Product))]
+    const uniqueCurrencies = [...new Set(parsedData.map(item => item.Currency))]
+    setProducts(uniqueProducts)
+    setCurrencies(uniqueCurrencies)
+  }, [])
+
+  // Apply filters
+  useEffect(() => {
+    let result = data
+    
+    if (selectedProduct !== 'All') {
+      result = result.filter(item => item.Product === selectedProduct)
+    }
+    
+    if (selectedCurrency !== 'All') {
+      result = result.filter(item => item.Currency === selectedCurrency)
+    }
+    
+    setFilteredData(result)
+  }, [selectedProduct, selectedCurrency, data])
+
+  // Generate custom chart based on description using AI
+  /*
+  const generateCustomChart = async () => {
+    if (!customChartDescription.trim()) {
+      alert('Please enter a description for the chart you want to generate')
+      return
+    }
+
+    try {
+      // Show loading state
+      setCustomChartConfig({
+        data: [],
+        layout: {
+          title: 'Generating chart...',
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#E5E7EB' }
+        }
+      })
+
+      const response = await fetch('/api/generate-chart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: customChartDescription,
+          data: filteredData
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate chart')
+      }
+
+      const result = await response.json()
+      
+      // Transform the AI response into Plotly format
+      const plotlyConfig = {
+        data: result.data,
+        layout: {
+          title: result.config.title,
+          xaxis: { title: result.config.xAxis },
+          yaxis: { title: result.config.yAxis },
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          font: { color: '#E5E7EB' },
+          showlegend: result.config.groupBy ? true : false
+        }
+      }
+
+      // Add barmode for grouped bar charts
+      if (result.config.chartType === 'bar' && result.config.groupBy) {
+        plotlyConfig.layout.barmode = 'group'
+      }
+
+      setCustomChartConfig(plotlyConfig)
+    } catch (error) {
+      console.error('Error generating chart:', error)
+      alert('Failed to generate chart. Please try again.')
+      
+      // Reset to default state
+      setCustomChartConfig(null)
+    }
+  }
+  */
+ // Generate custom chart based on description using AI
+const generateCustomChart = async () => {
+  if (!customChartDescription.trim()) {
+    alert("Please enter a description for the chart you want to generate");
+    return;
+  }
+
+  try {
+    // Show loading placeholder
+    setCustomChartConfig({
+      data: [],
+      layout: {
+        title: "Generating chart...",
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+        font: { color: "#E5E7EB" },
+      },
+    });
+
+    const response = await fetch("/api/generate-chart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: customChartDescription,
+        data: filteredData,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to generate chart");
+    }
+
+    const result = await response.json();
+
+    // ✅ Directly use AI's Plotly config
+    if (result?.config) {
+      setCustomChartConfig(result.config);
+    } else {
+      throw new Error("No config returned from API");
+    }
+  } catch (error) {
+    console.error("Error generating chart:", error);
+    alert("Failed to generate chart. Please try again.");
+    setCustomChartConfig(null);
+  }
+};
+
+
+  // Prepare data for charts
+  const prepareChartData = () => {
+    // 1. Shipment Trend Analysis
+    const shipmentTrend = {}
+    filteredData.forEach(item => {
+      const month = item.Date.substring(0, 7) // YYYY-MM
+      if (!shipmentTrend[month]) {
+        shipmentTrend[month] = {}
+      }
+      if (!shipmentTrend[month][item.Product]) {
+        shipmentTrend[month][item.Product] = 0
+      }
+      shipmentTrend[month][item.Product] += parseInt(item.Quantity)
+    })
+
+    // 2. Profitability & Cost Analysis
+    const profitabilityByProduct = {}
+    filteredData.forEach(item => {
+      if (!profitabilityByProduct[item.Product]) {
+        profitabilityByProduct[item.Product] = { profit: 0, cost: 0, revenue: 0 }
+      }
+      const revenue = parseInt(item.Quantity) * parseFloat(item.Price_per_unit)
+      profitabilityByProduct[item.Product].profit += parseFloat(item.Profit)
+      profitabilityByProduct[item.Product].cost += parseFloat(item.Cost)
+      profitabilityByProduct[item.Product].revenue += revenue
+    })
+
+    // 3. Seasonal Demand Prediction
+    const seasonalDemand = {}
+    filteredData.forEach(item => {
+      const month = item.Date.substring(5, 7) // MM
+      if (!seasonalDemand[month]) {
+        seasonalDemand[month] = 0
+      }
+      seasonalDemand[month] += parseInt(item.Quantity)
+    })
+
+    // 4. Delay & Risk Analysis
+    const delayRiskByProduct = {}
+    filteredData.forEach(item => {
+      if (!delayRiskByProduct[item.Product]) {
+        delayRiskByProduct[item.Product] = { delay: 0, risk: 0, count: 0 }
+      }
+      delayRiskByProduct[item.Product].delay += parseFloat(item.Delay_in_days)
+      delayRiskByProduct[item.Product].risk += parseFloat(item.Risk_Score)
+      delayRiskByProduct[item.Product].count += 1
+    })
+
+    // Calculate averages
+    Object.keys(delayRiskByProduct).forEach(product => {
+      delayRiskByProduct[product].delay /= delayRiskByProduct[product].count
+      delayRiskByProduct[product].risk /= delayRiskByProduct[product].count
+    })
+
+    // 5. Currency & Market Impact Assessment
+    const currencyImpact = {}
+    filteredData.forEach(item => {
+      if (!currencyImpact[item.Currency]) {
+        currencyImpact[item.Currency] = { profit: 0, marketImpact: 0, count: 0 }
+      }
+      currencyImpact[item.Currency].profit += parseFloat(item.Profit)
+      currencyImpact[item.Currency].marketImpact += parseFloat(item.Market_Impact_Score)
+      currencyImpact[item.Currency].count += 1
+    })
+
+    // Calculate averages
+    Object.keys(currencyImpact).forEach(currency => {
+      currencyImpact[currency].profit /= currencyImpact[currency].count
+      currencyImpact[currency].marketImpact /= currencyImpact[currency].count
+    })
+
+    // 6. Forecasting
+    const monthlyRevenue = {}
+    filteredData.forEach(item => {
+      const month = item.Date.substring(0, 7) // YYYY-MM
+      if (!monthlyRevenue[month]) {
+        monthlyRevenue[month] = 0
+      }
+      const revenue = parseInt(item.Quantity) * parseFloat(item.Price_per_unit)
+      monthlyRevenue[month] += revenue
+    })
+
+    // Simple linear regression for forecasting
+    const months = Object.keys(monthlyRevenue).sort()
+    const revenues = months.map(month => monthlyRevenue[month])
+    
+    // Calculate trend
+    const n = months.length
+    const xSum = months.reduce((sum, _, i) => sum + i, 0)
+    const ySum = revenues.reduce((sum, rev) => sum + rev, 0)
+    const xySum = months.reduce((sum, _, i) => sum + (i * revenues[i]), 0)
+    const xSquareSum = months.reduce((sum, _, i) => sum + (i * i), 0)
+    
+    const slope = (n * xySum - xSum * ySum) / (n * xSquareSum - xSum * xSum)
+    const intercept = (ySum - slope * xSum) / n
+    
+    // Generate forecast for next 3 months
+    const forecastMonths = []
+    const forecastRevenues = []
+    const lastMonth = new Date(months[n-1] + '-01')
+    
+    for (let i = 1; i <= 3; i++) {
+      const forecastDate = new Date(lastMonth)
+      forecastDate.setMonth(forecastDate.getMonth() + i)
+      const forecastMonth = forecastDate.toISOString().substring(0, 7)
+      forecastMonths.push(forecastMonth)
+      
+      const forecastRevenue = slope * (n + i - 1) + intercept
+      forecastRevenues.push(forecastRevenue)
+    }
+
+    return {
+      shipmentTrend,
+      profitabilityByProduct,
+      seasonalDemand,
+      delayRiskByProduct,
+      currencyImpact,
+      monthlyRevenue,
+      forecast: {
+        months: forecastMonths,
+        revenues: forecastRevenues
+      }
+    }
+  }
+
+  const chartData = prepareChartData()
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100">
+      {/* Header */}
+      <header className="bg-gray-800 shadow-sm border-b border-gray-700">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold text-white">ImportExport Dashboard</h1>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              {/* User Profile */}
+              <div className="flex items-center space-x-3">
+                <Avatar>
+                  <AvatarImage src="/placeholder-avatar.jpg" />
+                  <AvatarFallback>IS</AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium text-white">Isha Sahasrabuddhe</p>
+                  <p className="text-xs text-gray-400">isha@example.com</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              </div>
+              
+              {/* Theme Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                className="text-gray-300"
+              >
+                {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </Button>
+              
+              <span className="text-sm text-gray-400">Last updated: 2 hours ago</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8">
+          {/* Filters */}
+          <div className="bg-gray-800 rounded-xl p-6 mb-8 shadow-xl border border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Product</label>
+                <select 
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedProduct}
+                  onChange={(e) => setSelectedProduct(e.target.value)}
+                >
+                  <option value="All">All Products</option>
+                  {products.map(product => (
+                    <option key={product} value={product}>{product}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Currency</label>
+                <select 
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
+                >
+                  <option value="All">All Currencies</option>
+                  {currencies.map(currency => (
+                    <option key={currency} value={currency}>{currency}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            {/* 1. Shipment Trend Analysis */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">1. Shipment Trend Analysis</CardTitle>
+                <p className="text-xs text-gray-400">Import and export patterns over time by product category</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={Object.keys(chartData.shipmentTrend).map(month => {
+                    const monthData = chartData.shipmentTrend[month]
+                    return {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      name: month,
+                      x: Object.keys(monthData),
+                      y: Object.values(monthData),
+                      line: { width: 2 }
+                    }
+                  })}
+                  layout={{
+                    title: 'Monthly Shipment Volumes by Product',
+                    xaxis: { title: 'Product' },
+                    yaxis: { title: 'Quantity' },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 2. Profitability & Cost Analysis */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">2. Profitability & Cost Analysis</CardTitle>
+                <p className="text-xs text-gray-400">Revenue, cost, and profit margins by product category</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={[
+                    {
+                      type: 'bar',
+                      x: Object.keys(chartData.profitabilityByProduct),
+                      y: Object.values(chartData.profitabilityByProduct).map(d => d.revenue),
+                      name: 'Revenue',
+                      marker: { color: '#3B82F6' }
+                    },
+                    {
+                      type: 'bar',
+                      x: Object.keys(chartData.profitabilityByProduct),
+                      y: Object.values(chartData.profitabilityByProduct).map(d => d.cost),
+                      name: 'Cost',
+                      marker: { color: '#EF4444' }
+                    },
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x: Object.keys(chartData.profitabilityByProduct),
+                      y: Object.values(chartData.profitabilityByProduct).map(d => d.profit),
+                      name: 'Profit',
+                      yaxis: 'y2',
+                      line: { color: '#10B981' },
+                      marker: { color: '#10B981' }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Financial Performance by Product',
+                    xaxis: { title: 'Product' },
+                    yaxis: { title: 'Amount' },
+                    yaxis2: {
+                      title: 'Profit',
+                      overlaying: 'y',
+                      side: 'right'
+                    },
+                    barmode: 'group',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 3. Seasonal Demand Prediction */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">3. Seasonal Demand Prediction</CardTitle>
+                <p className="text-xs text-gray-400">Seasonal patterns and demand spikes for inventory planning</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={[
+                    {
+                      type: 'bar',
+                      x: Object.keys(chartData.seasonalDemand).map(m => {
+                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                        return months[parseInt(m) - 1]
+                      }),
+                      y: Object.values(chartData.seasonalDemand),
+                      name: 'Historical Demand',
+                      marker: { color: '#8B5CF6' }
+                    },
+                    {
+                      type: 'scatter',
+                      mode: 'lines',
+                      x: Object.keys(chartData.seasonalDemand).map(m => {
+                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                        return months[parseInt(m) - 1]
+                      }),
+                      y: Object.values(chartData.seasonalDemand),
+                      name: 'Trend Line',
+                      line: { color: '#F59E0B', dash: 'dot' }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Seasonal Demand Patterns',
+                    xaxis: { title: 'Month' },
+                    yaxis: { title: 'Quantity' },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 4. Delay & Risk Analysis */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">4. Delay & Risk Analysis</CardTitle>
+                <p className="text-xs text-gray-400">Shipment delays and high-risk trade routes identification</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={[
+                    {
+                      type: 'bar',
+                      x: Object.keys(chartData.delayRiskByProduct),
+                      y: Object.values(chartData.delayRiskByProduct).map(d => d.delay),
+                      name: 'Avg Delay (days)',
+                      marker: { color: '#EF4444' }
+                    },
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x: Object.keys(chartData.delayRiskByProduct),
+                      y: Object.values(chartData.delayRiskByProduct).map(d => d.risk),
+                      name: 'Avg Risk Score',
+                      yaxis: 'y2',
+                      line: { color: '#F59E0B' },
+                      marker: { color: '#F59E0B' }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Delay and Risk Analysis by Product',
+                    xaxis: { title: 'Product' },
+                    yaxis: { title: 'Avg Delay (days)' },
+                    yaxis2: {
+                      title: 'Avg Risk Score',
+                      overlaying: 'y',
+                      side: 'right'
+                    },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 5. Currency & Market Impact Assessment */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">5. Currency & Market Impact Assessment</CardTitle>
+                <p className="text-xs text-gray-400">Effect of currency fluctuations on profits and trade performance</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={[
+                    {
+                      type: 'bar',
+                      x: Object.keys(chartData.currencyImpact),
+                      y: Object.values(chartData.currencyImpact).map(d => d.profit),
+                      name: 'Avg Profit',
+                      marker: { color: '#10B981' }
+                    },
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x: Object.keys(chartData.currencyImpact),
+                      y: Object.values(chartData.currencyImpact).map(d => d.marketImpact),
+                      name: 'Market Impact Score',
+                      yaxis: 'y2',
+                      line: { color: '#8B5CF6' },
+                      marker: { color: '#8B5CF6' }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Currency Impact on Profits',
+                    xaxis: { title: 'Currency' },
+                    yaxis: { title: 'Avg Profit' },
+                    yaxis2: {
+                      title: 'Market Impact Score',
+                      overlaying: 'y',
+                      side: 'right'
+                    },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* 6. Forecasting */}
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-blue-300">6. Forecasting</CardTitle>
+                <p className="text-xs text-gray-400">Future product demand and revenue trends prediction</p>
+              </CardHeader>
+              <CardContent>
+                <Plot
+                  data={[
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x: Object.keys(chartData.monthlyRevenue),
+                      y: Object.values(chartData.monthlyRevenue),
+                      name: 'Historical Revenue',
+                      line: { color: '#3B82F6' },
+                      marker: { color: '#3B82F6' }
+                    },
+                    {
+                      type: 'scatter',
+                      mode: 'lines+markers',
+                      x: chartData.forecast.months,
+                      y: chartData.forecast.revenues,
+                      name: 'Forecasted Revenue',
+                      line: { color: '#F59E0B', dash: 'dash' },
+                      marker: { color: '#F59E0B' }
+                    }
+                  ]}
+                  layout={{
+                    title: 'Revenue Trend and Forecast',
+                    xaxis: { title: 'Month' },
+                    yaxis: { title: 'Revenue' },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#E5E7EB' },
+                    legend: { orientation: 'h', y: -0.2 }
+                  }}
+                  style={{ width: '100%', height: '300px' }}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* AI Chart Generator */}
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl border border-gray-700 mb-8">
+            <h2 className="text-2xl font-semibold mb-4 text-blue-300">🤖 AI Chart Generator</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Describe the chart you want to generate:
+                </label>
+                <textarea 
+                  className="w-full h-32 bg-gray-700 border border-gray-600 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  placeholder="e.g., Show me profit by product, create a scatter plot of delay vs risk, display monthly quantity trends, compare costs across currencies..."
+                  value={customChartDescription}
+                  onChange={(e) => setCustomChartDescription(e.target.value)}
+                />
+                <div className="mt-4 flex items-center space-x-4">
+                  <button 
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={generateCustomChart}
+                    disabled={!customChartDescription.trim()}
+                  >
+                    Generate Chart
+                  </button>
+                  <button 
+                    className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition duration-300"
+                    onClick={() => setCustomChartConfig(null)}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="mt-3 text-sm text-gray-400">
+                  💡 Try: "profit by product", "delay vs risk scatter plot", "monthly quantity trends", "cost comparison by currency"
+                </div>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                <h3 className="text-lg font-medium mb-2 text-blue-300">Generated Chart</h3>
+                {customChartConfig ? (
+                  <div className="space-y-2">
+                    <Plot
+                      data={customChartConfig.data}
+                      layout={customChartConfig.layout}
+                      style={{ width: '100%', height: '250px' }}
+                      config={{
+                        displayModeBar: true,
+                        displaylogo: false,
+                        modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d']
+                      }}
+                    />
+                    {customChartConfig.layout.title === 'Generating chart...' && (
+                      <div className="text-center text-gray-400 text-sm">
+                        ⏳ AI is analyzing your request...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-48 text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📊</div>
+                      <p className="text-sm">Describe your chart above and AI will generate it here</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default ImportExportDashboard
